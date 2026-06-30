@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+.env
+*.env.local
+
+# UV
+.uv/
+uv.lock
+
+# Models (GGUF files can be large — store locally only)
+backend/models/
+*.gguf
+*.bin
+*.ggml
+
+# Node / Angular
+node_modules/
+frontend/dist/
+frontend/.angular/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Secrets — NEVER commit
+.env
+*.env
+.env.*
+!.env.example
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Build outputs
+*.pyc
+*.pyo
+dist-info/
+
+# Logs
+*.log
+logs/

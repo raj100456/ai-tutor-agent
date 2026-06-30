@@ -1,0 +1,321 @@
+# ================================================================
+# Personal AI Tutor — Master Configuration
+# ================================================================
+# THIS IS THE SINGLE SOURCE OF TRUTH for all system behaviour.
+#
+# HOW IT WORKS:
+#   • Plain values are used as-is.
+#   • Keys ending in _env resolve to the named environment variable.
+#     e.g.  api_key_env: "OPENAI_API_KEY"  →  os.environ["OPENAI_API_KEY"]
+#   • Keep secrets in .env — never hard-code them here.
+#
+# CHANGING PROVIDERS: edit llm.task_providers below — no code change needed.
+# ENABLING INTEGRATIONS: add the integration name to integrations.enabled.
+# TOGGLING DECORATORS: add/remove names in tutor.active_decorators.
+# ================================================================
+
+# ── Application ──────────────────────────────────────────────────────────────
+app:
+  name: "PersonalAITutor"
+  version: "1.0.0"
+  environment: "development"      # development | production
+  log_level: "INFO"               # DEBUG | INFO | WARNING | ERROR
+  cors_origins:
+    - "http://localhost:4200"     # Angular dev server
+    - "http://localhost:3000"
+
+# ── LLM Configuration ────────────────────────────────────────────────────────
+llm:
+  # Map each task type to its provider name.
+  # Change a value here to switch providers — no code change required.
+  task_providers:
+    chat:           "llamacpp"
+    planning:       "llamacpp"
+    evaluation:     "llamacpp"
+    classification: "llamacpp"
+    knowledge_feed: "llamacpp"
+
+  # Providers tried in order when primary fails.
+  fallback_chain:
+    - "llamacpp"
+    # - "ollama"
+    # - "openai"
+
+  # ── Provider configurations ──────────────────────────────────────────────
+  providers:
+
+    llamacpp:
+      type: "llamacpp"
+      # Path to your GGUF model file. Download from HuggingFace.
+      # Recommended: bartowski/Meta-Llama-3.2-3B-Instruct-GGUF
+      model_path: "./models/llama-3.2-3b-instruct.Q4_K_M.gguf"
+      n_ctx: 4096           # Context window
+      n_gpu_layers: -1      # -1 = all layers on GPU (Metal/CUDA); 0 = CPU only
+      n_batch: 512
+      temperature: 0.7
+      max_tokens: 2048
+      verbose: false
+      chat_format: "llama-3"
+
+    ollama:
+      type: "ollama"
+      base_url: "http://localhost:11434"
+      model: "llama3.2:3b"
+      temperature: 0.7
+      max_tokens: 2048
+
+    openai:
+      type: "openai"
+      api_key_env: "OPENAI_API_KEY"
+      model: "gpt-4o"
+      temperature: 0.7
+      max_tokens: 4096
+
+    anthropic:
+      type: "anthropic"
+      api_key_env: "ANTHROPIC_API_KEY"
+      model: "claude-3-5-sonnet-20241022"
+      temperature: 0.7
+      max_tokens: 4096
+
+    google:
+      type: "google"
+      api_key_env: "GOOGLE_API_KEY"
+      model: "gemini-2.0-flash"
+      temperature: 0.7
+      max_tokens: 4096
+
+    azure_openai:
+      type: "azure_openai"
+      api_key_env: "AZURE_OPENAI_API_KEY"
+      endpoint_env: "AZURE_OPENAI_ENDPOINT"
+      deployment: "gpt-4o"
+      api_version: "2024-08-01-preview"
+      temperature: 0.7
+      max_tokens: 4096
+
+  # ── Circuit breaker / retry settings ────────────────────────────────────
+  circuit_breaker:
+    max_retries: 3
+    wait_multiplier_seconds: 1    # Exponential base
+    wait_max_seconds: 10
+    reraise: true                 # Re-raise last exception if all retries fail
+
+# ── LangGraph ────────────────────────────────────────────────────────────────
+graph:
+  checkpointer: "memory"          # memory | postgres
+  postgres_url_env: "SUPABASE_DATABASE_URL"
+  max_iterations: 15
+  stream_mode: "messages"         # values | updates | messages
+
+# ── Tutor Behaviour ──────────────────────────────────────────────────────────
+tutor:
+  system_prompt: |
+    You are an expert technical tutor specializing in FAANG and staff-level
+    interview preparation. Your student is a senior software engineer.
+    Be direct, concise, and challenging. Favour depth over breadth.
+    Push back on shallow answers. Use real-world examples and system tradeoffs.
+    Topics you master: system design, DSA, behavioral interviews, coding patterns.
+
+  topics:
+    - id: "system_design"
+      name: "System Design"
+      subtopics:
+        - "scalability"
+        - "consistency_models"
+        - "caching_strategies"
+        - "database_selection"
+        - "message_queues"
+        - "load_balancing"
+        - "cdn"
+        - "rate_limiting"
+
+    - id: "dsa"
+      name: "Data Structures & Algorithms"
+      subtopics:
+        - "arrays_strings"
+        - "trees_graphs"
+        - "dynamic_programming"
+        - "sorting_searching"
+        - "heaps_priority_queues"
+        - "tries"
+
+    - id: "behavioral"
+      name: "Behavioral Interviews"
+      subtopics:
+        - "star_method"
+        - "leadership_influence"
+        - "conflict_resolution"
+        - "ambiguity_handling"
+        - "impact_driven_narratives"
+
+    - id: "coding_patterns"
+      name: "Coding Patterns"
+      subtopics:
+        - "two_pointer"
+        - "sliding_window"
+        - "bfs_dfs"
+        - "backtracking"
+        - "divide_and_conquer"
+        - "union_find"
+
+  # Decorators active at startup. Changed at runtime via /api/settings.
+  active_decorators: []
+
+# ── Decorators ────────────────────────────────────────────────────────────────
+# Decorators alter LLM behaviour at runtime without code changes.
+decorators:
+  available:
+    exam_mode:
+      description: "Simulates real interview — no hints, timed, strict"
+      hint_allowed: false
+      time_limit_seconds: 1800
+      strict_scoring: true
+
+    strict_pacing:
+      description: "Enforces structured progression; blocks topic skipping"
+      enforce_prerequisites: true
+      min_mastery_to_advance: 0.7
+
+    socratic_mode:
+      description: "Guides through questions rather than giving direct answers"
+      question_ratio: 0.8
+      max_direct_answers_per_session: 2
+
+    spaced_repetition:
+      description: "SM-2 algorithm schedules reviews at optimal intervals"
+      ease_factor_init: 2.5
+      min_interval_days: 1
+
+# ── Integration Plugin Bus ────────────────────────────────────────────────────
+# Add integration names to `enabled` to activate them.
+# Each integration key below is a plugin config — loaded by IntegrationRegistry.
+integrations:
+  enabled: []
+  # Example: enabled: ["mcp_web_search", "discord"]
+
+  # ── MCP servers ────────────────────────────────────────────────────────────
+  mcp_web_search:
+    type: "mcp"
+    server_command: ["npx", "-y", "@modelcontextprotocol/server-brave-search"]
+    server_env:
+      BRAVE_API_KEY_ENV: "BRAVE_API_KEY"
+    description: "Web search via Brave Search MCP"
+    tools: ["brave_web_search"]
+
+  mcp_github:
+    type: "mcp"
+    server_command: ["npx", "-y", "@modelcontextprotocol/server-github"]
+    server_env:
+      GITHUB_PERSONAL_ACCESS_TOKEN_ENV: "GITHUB_TOKEN"
+    description: "GitHub repository access via MCP"
+    tools: ["search_repositories", "get_file_contents"]
+
+  mcp_filesystem:
+    type: "mcp"
+    server_command: ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp/tutor"]
+    description: "Local filesystem access for saving practice code"
+    tools: ["read_file", "write_file", "list_directory"]
+
+  # ── Notifiers ──────────────────────────────────────────────────────────────
+  discord:
+    type: "notifier"
+    channel: "discord"
+    webhook_url_env: "DISCORD_WEBHOOK_URL"
+    username: "AI Tutor"
+    avatar_url: "https://cdn-icons-png.flaticon.com/512/1698/1698535.png"
+
+  slack:
+    type: "notifier"
+    channel: "slack"
+    webhook_url_env: "SLACK_WEBHOOK_URL"
+    channel_name: "#study-progress"
+
+  email:
+    type: "notifier"
+    channel: "email"
+    provider: "sendgrid"
+    api_key_env: "SENDGRID_API_KEY"
+    from_email: "tutor@yourdomain.com"
+    from_name: "AI Tutor"
+
+  firebase_push:
+    type: "notifier"
+    channel: "push"
+    credentials_env: "FIREBASE_CREDENTIALS_JSON"
+    project_id_env: "FIREBASE_PROJECT_ID"
+
+  # ── Calendar ───────────────────────────────────────────────────────────────
+  google_calendar:
+    type: "calendar"
+    client_id_env: "GOOGLE_CLIENT_ID"
+    client_secret_env: "GOOGLE_CLIENT_SECRET"
+    redirect_uri: "http://localhost:8000/api/integrations/google/callback"
+    calendar_id: "primary"
+
+# ── Knowledge Feed ────────────────────────────────────────────────────────────
+knowledge_feed:
+  sources:
+    - type: "hackernews"
+      enabled: true
+      max_items: 10
+      keywords:
+        - "system design"
+        - "distributed systems"
+        - "algorithms"
+        - "machine learning"
+        - "software engineering"
+
+    - type: "github_trending"
+      enabled: true
+      language: "python"
+      since: "daily"           # daily | weekly | monthly
+
+    - type: "rss"
+      enabled: false
+      feeds:
+        - "https://feeds.feedburner.com/martinfowler"
+        - "https://highscalability.com/rss.xml"
+        - "https://netflixtechblog.com/feed"
+
+# ── Notification Scheduling ───────────────────────────────────────────────────
+notifier:
+  enabled_channels: []
+  schedules:
+    daily_reminder:
+      enabled: false
+      cron: "0 8 * * *"        # 8am every day
+      channels: ["discord"]
+      message_template: >
+        📚 Time to study! Next topic: {next_topic}.
+        Current streak: {streak_days} days 🔥
+
+    weekly_report:
+      enabled: false
+      cron: "0 9 * * 1"        # Monday 9am
+      channels: ["email"]
+
+# ── Data & Persistence ────────────────────────────────────────────────────────
+data:
+  supabase_url_env: "SUPABASE_URL"
+  supabase_anon_key_env: "SUPABASE_ANON_KEY"
+  supabase_service_key_env: "SUPABASE_SERVICE_KEY"
+  # Used when graph.checkpointer = "postgres"
+  postgres_url_env: "SUPABASE_DATABASE_URL"
+
+# ── Security & Auth ───────────────────────────────────────────────────────────
+security:
+  # auth_mode options:
+  #   none     — no auth (local/dev only)
+  #   api_key  — X-API-Key header verification
+  #   clerk    — Clerk JWT verification
+  auth_mode: "none"
+
+  api_key_header: "X-API-Key"
+  # Comma-separated list of valid keys (used when auth_mode = "api_key")
+  api_keys_env: "API_KEYS"
+
+  clerk:
+    publishable_key_env: "CLERK_PUBLISHABLE_KEY"
+    secret_key_env: "CLERK_SECRET_KEY"
+    jwks_url: "https://api.clerk.com/v1/jwks"

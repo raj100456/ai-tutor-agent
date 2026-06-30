@@ -1,0 +1,92 @@
+<div class="tutor-layout">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <h2 class="sidebar-title">
+      <mat-icon>school</mat-icon> AI Tutor
+    </h2>
+
+    <!-- Topic selector -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Topic</mat-label>
+      <mat-select
+        [value]="currentTopic()"
+        (selectionChange)="onTopicChange($event.value)">
+        @for (topic of availableTopics; track topic.id) {
+          <mat-option [value]="topic.id">{{ topic.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Decorator chips -->
+    <p class="section-label">Learning Mode</p>
+    <mat-chip-set>
+      @for (d of availableDecorators; track d.id) {
+        <mat-chip
+          [class.active-chip]="isDecoratorActive(d.id)"
+          (click)="toggleDecorator(d.id)"
+          [matTooltip]="d.id">
+          {{ d.label }}
+        </mat-chip>
+      }
+    </mat-chip-set>
+
+    <!-- Session info -->
+    <div class="session-info">
+      <p class="label">Session</p>
+      <code>{{ sessionId().slice(0, 8) }}…</code>
+    </div>
+  </aside>
+
+  <!-- ── Chat area ─────────────────────────────────────────────────────── -->
+  <main class="chat-area">
+    <div class="messages-container">
+      @if (messages().length === 0) {
+        <div class="empty-state">
+          <mat-icon>chat_bubble_outline</mat-icon>
+          <p>Ask me anything — system design, DSA, behavioral, or coding patterns.</p>
+          <p class="hint">Try: <em>"Explain consistent hashing"</em> or <em>"Give me a system design practice question"</em></p>
+        </div>
+      }
+
+      @for (msg of messages(); track msg.id) {
+        <app-message-bubble [message]="msg" />
+      }
+
+      <!-- Streaming indicator -->
+      @if (isStreaming()) {
+        <div class="streaming-indicator">
+          <mat-spinner diameter="16" />
+          <span>Thinking…</span>
+        </div>
+      }
+
+      <div #messagesEnd></div>
+    </div>
+
+    <!-- ── Input bar ────────────────────────────────────────────────── -->
+    <div class="input-bar">
+      <mat-form-field appearance="outline" class="input-field">
+        <textarea
+          matInput
+          cdkTextareaAutosize
+          [ngModel]="inputText()"
+          (ngModelChange)="inputText.set($event)"
+          (keydown)="onEnterKey($event)"
+          placeholder="Ask a question… (Enter to send, Shift+Enter for new line)"
+          [disabled]="isStreaming()"
+          rows="1">
+        </textarea>
+      </mat-form-field>
+
+      <button
+        mat-fab
+        color="primary"
+        [disabled]="!canSend()"
+        (click)="sendMessage()"
+        matTooltip="Send (Enter)">
+        <mat-icon>send</mat-icon>
+      </button>
+    </div>
+  </main>
+</div>
